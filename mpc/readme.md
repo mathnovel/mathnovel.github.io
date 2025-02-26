@@ -23,9 +23,9 @@
 # <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/06_CFTOC_mynote.md"> 5 有约束最优控制 </a>
 
 
-## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/06_CFTOC_mynote.md"> 5.1 cost的PN常用的李亚普诺夫实现和LQR实现 </a>
+## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/05/ternimal cost的PN的计算.md"> 5.1 cost的PN常用的李亚普诺夫实现和LQR实现 </a>
 
-## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/06_CFTOC_mynote.md"> 5.2 有约束最优控制的一个例子 </a>
+## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/05/example5_1.md"> 5.2 有约束最优控制的一个例子 </a>
 
  
  
