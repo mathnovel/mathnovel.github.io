@@ -39,7 +39,7 @@
 # <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/06_CFTOC_mynote.md"> 6 有约束最优控制 </a>
 
 
-## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/HW4_4.md"> 6.1 有约束最优控制的例子实现 </a>
+## <a href="https://github.com/mathnovel/mathnovel.github.io/tree/main/mpc/06CFTOC/HW4_4.md"> 6.1 有约束最优控制的例子实现 </a>
 Sx,Su的构建
 Q_bar,R_bar的构建
 H,F的构建
