@@ -1,0 +1,11 @@
+# ninja log v5
+2	1153	7623224427790884	exampleHW4_4_autogen/timestamp	fbe54dafdf7454d2
+2	1153	7623224427790884	exampleHW4_4_autogen/mocs_compilation.cpp	fbe54dafdf7454d2
+2	1153	7623224427790884	D:/github/mathnovel.github.io/mpc/06CFTOC/exampleHW4_4/build/Desktop_Qt_6_5_3_MSVC2019_64bit-Debug/exampleHW4_4_autogen/timestamp	fbe54dafdf7454d2
+2	1153	7623224427790884	D:/github/mathnovel.github.io/mpc/06CFTOC/exampleHW4_4/build/Desktop_Qt_6_5_3_MSVC2019_64bit-Debug/exampleHW4_4_autogen/mocs_compilation.cpp	fbe54dafdf7454d2
+1169	9296	7623224510051572	CMakeFiles/exampleHW4_4.dir/mpc_controller.cpp.obj	9bb8146a13ec2475
+1173	10384	7623224521003718	CMakeFiles/exampleHW4_4.dir/plotter.cpp.obj	6fe5fd832be244bf
+1161	11904	7623224536241296	CMakeFiles/exampleHW4_4.dir/main.cpp.obj	3a8750512d955119
+1176	12721	7623224544336942	CMakeFiles/exampleHW4_4.dir/exampleHW4_4_autogen/mocs_compilation.cpp.obj	a6d812856045af6f
+1165	14553	7623224562640097	CMakeFiles/exampleHW4_4.dir/qcustomplot.cpp.obj	4311e3069a8457ff
+14554	15313	7623224570136924	exampleHW4_4.exe	1291b0b7e02a946b

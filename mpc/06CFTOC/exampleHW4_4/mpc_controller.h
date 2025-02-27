@@ -14,7 +14,7 @@ public:
 
 private:
     double mpc_controller(const Eigen::VectorXd& x);
-    void getPredictionMatrices(Eigen::MatrixXd& H, Eigen::VectorXd& g, const Eigen::VectorXd& x);
+    void getPredictionMatrices(Eigen::MatrixXd& H, Eigen::MatrixXd& F, const Eigen::VectorXd& x);
     /**
  * Discrete-time Linear Quadratic Regulator
  * @param A System matrix
