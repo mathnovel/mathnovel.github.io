@@ -12,9 +12,12 @@ public:
                   std::vector<double>& x2,
                   std::vector<double>& u);
 
+public:
+    void compare_dlqr_and_dlyap();
+
 private:
     double mpc_controller(const Eigen::VectorXd& x);
-    void getPredictionMatrices(Eigen::MatrixXd& H, Eigen::MatrixXd& F, const Eigen::VectorXd& x);
+    void getPredictionMatrices(Eigen::MatrixXd& H, Eigen::VectorXd& g, const Eigen::VectorXd& x);
     /**
  * Discrete-time Linear Quadratic Regulator
  * @param A System matrix
@@ -27,6 +30,15 @@ private:
     void dlqr(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
               const Eigen::MatrixXd& Q, const double R,
               Eigen::MatrixXd& K, Eigen::MatrixXd& P);
+
+
+    /**
+ * Solves the discrete Lyapunov equation: AXA' - X + Q = 0
+ * @param A System matrix
+ * @param Q Symmetric matrix
+ * @return Solution X
+ */
+    Eigen::MatrixXd dlyap(const Eigen::MatrixXd& A, const Eigen::MatrixXd& Q);
 
     Eigen::MatrixXd A, B, C, Q, P_N;
     double R, Ts, T_sim, umin, umax;

@@ -1,29 +1,7 @@
 #include "mpc_controller.h"
 #include <qpOASES.hpp>
 #include <iostream>
-using namespace Eigen;
-
-// Helper function to compute Kronecker product
-MatrixXd kroneckerProduct(const MatrixXd& A, const MatrixXd& B) {
-    MatrixXd result(A.rows() * B.rows(), A.cols() * B.cols());
-    for (int i = 0; i < A.rows(); i++) {
-        for (int j = 0; j < A.cols(); j++) {
-            result.block(i * B.rows(), j * B.cols(), B.rows(), B.cols()) = A(i, j) * B;
-        }
-    }
-    return result;
-}
-
-// Helper function to compute matrix power
-MatrixXd matrix_power(const MatrixXd& A, int power) {
-    if (power == 0) {
-        return MatrixXd::Identity(A.rows(), A.cols());
-    }
-    if (power == 1) {
-        return A;
-    }
-    return A * matrix_power(A, power - 1);
-}
+using namespace std;
 
 MPCController::MPCController() {
     // Initialize system matrices
@@ -41,7 +19,7 @@ MPCController::MPCController() {
     // MPC parameters
     Ts = 0.1;
     N = 5;
-    Q = Eigen::MatrixXd::Identity(2, 2);
+    Q = 100.0* Eigen::MatrixXd::Identity(2, 2);
     R = 1.0;
 
     x0.resize(2);
@@ -82,9 +60,50 @@ void MPCController::simulate(std::vector<double>& time,
     }
 }
 
+void MPCController::compare_dlqr_and_dlyap()
+{
+    A.resize(2, 2);
+    A << 0.7115, -0.4345,
+        0.4345, 0.8853;
+
+    B.resize(2, 1);
+    B << 0.2173,
+        0.0573;
+
+    C.resize(1, 2);
+    C << 0, 1;
+
+    // MPC parameters
+    Ts = 0.1;
+    N = 5;
+    Q =  Eigen::MatrixXd::Identity(2, 2);
+    R = 1.0;
+
+    x0.resize(2);
+    x0 << 0, 10;
+
+    T_sim = 6.0;
+    Nsim = T_sim / Ts;
+
+    umin = -5.0;
+    umax = 5.0;
+
+    // Get terminal weight using DLQR
+    Eigen::MatrixXd P_dlqr;
+    Eigen::MatrixXd K;
+    dlqr(A, B, Q, R, K, P_dlqr);
+
+    cout<<"dlqr P_n = "<<P_dlqr<<endl;
+    cout<<"-----------------------"<<endl;
+
+    Eigen::MatrixXd P_dlyap = dlyap(A, Q);
+     cout<<"dlyap P_dlyap = "<<P_dlyap<<endl;
+
+}
+
 double MPCController::mpc_controller(const Eigen::VectorXd& x) {
     Eigen::MatrixXd H;
-    Eigen::MatrixXd g;
+    Eigen::VectorXd g;
     getPredictionMatrices(H, g, x);
 
     qpOASES::QProblem qp(N, 0);
@@ -104,75 +123,40 @@ double MPCController::mpc_controller(const Eigen::VectorXd& x) {
     return U(0);
 }
 
-void MPCController::getPredictionMatrices(Eigen::MatrixXd& H, Eigen::MatrixXd& F, const Eigen::VectorXd& x) {
-
-
+void MPCController::getPredictionMatrices(Eigen::MatrixXd& H, Eigen::VectorXd& g, const Eigen::VectorXd& x) {
     int n = A.rows();
     int m = B.cols();
 
-    // First, rollout the dynamics to get Sx and Su
-    MatrixXd Sx = MatrixXd::Zero((N + 1) * n, n);
-    MatrixXd Su = MatrixXd::Zero((N + 1) * n, N * m);
+    Eigen::MatrixXd F = Eigen::MatrixXd::Zero(N * n, n);
+    Eigen::MatrixXd G = Eigen::MatrixXd::Zero(N * n, N * m);
 
-    // Calculate Sx and Su
-    for (int i = 0; i <= N; i++) {
-        MatrixXd A_power = matrix_power(A, i);
-        Sx.block(i * n, 0, n, n) = A_power;
+    F.block(0, 0, n, n) = A;
+    G.block(0, 0, n, m) = B;
 
-        for (int j = 0; j < N; j++) {
-            if (i - j - 1 >= 0) {
-                MatrixXd A_power_diff = matrix_power(A, i - j - 1);
-                Su.block(i * n, j * m, n, m) = A_power_diff * B;
-            }
+    for (int i = 1; i < N; ++i) {
+        F.block(i * n, 0, n, n) = A * F.block((i - 1) * n, 0, n, n);
+        G.block(i * n, 0, n, m) = A * G.block((i - 1) * n, 0, n, m);
+        if (i > 1) {
+            G.block(i * n, m, n, (i - 1) * m) = G.block((i - 1) * n, 0, n, (i - 1) * m);
         }
     }
 
-    // Stack-up weight matrices
-    MatrixXd I = MatrixXd::Identity(N, N);
-    MatrixXd Q_bar = kroneckerProduct(I, Q);
-    MatrixXd Q_bar_extended(Q_bar.rows() + n, Q_bar.cols() + n);
-    Q_bar_extended << Q_bar, MatrixXd::Zero(Q_bar.rows(), n),
-        MatrixXd::Zero(n, Q_bar.cols()), P_N;
+    Eigen::MatrixXd Q_bar = Eigen::MatrixXd::Zero(N * n, N * n);
+    Eigen::MatrixXd R_bar = Eigen::MatrixXd::Zero(N * m, N * m);
 
-    MatrixXd R_bar = R * MatrixXd::Identity(N, N);
+    for (int i = 0; i < N - 1; ++i) {
+        Q_bar.block(i * n, i * n, n, n) = Q;
+    }
+//    Q_bar.block((N - 1) * n, (N - 1) * n, n, n) = P_N;
+    Q_bar.block((N - 1) * n, (N - 1) * n, n, n) = Q;
 
-    H = Su.transpose() * Q_bar_extended * Su + R_bar;
+    for (int i = 0; i < N; ++i) {
+        R_bar(i, i) = R;
+    }
+
+    H = G.transpose() * Q_bar * G + R_bar;
     H = (H + H.transpose()) / 2.0;
-    F = Sx.transpose() * Q_bar_extended * Su;
-
-    //--------------------------------------------------------------------------------------------
-    // int n = A.rows();
-    // int m = B.cols();
-
-    // Eigen::MatrixXd F = Eigen::MatrixXd::Zero(N * n, n);
-    // Eigen::MatrixXd G = Eigen::MatrixXd::Zero(N * n, N * m);
-
-    // F.block(0, 0, n, n) = A;
-    // G.block(0, 0, n, m) = B;
-
-    // for (int i = 1; i < N; ++i) {
-    //     F.block(i * n, 0, n, n) = A * F.block((i - 1) * n, 0, n, n);
-    //     G.block(i * n, 0, n, m) = A * G.block((i - 1) * n, 0, n, m);
-    //     if (i > 1) {
-    //         G.block(i * n, m, n, (i - 1) * m) = G.block((i - 1) * n, 0, n, (i - 1) * m);
-    //     }
-    // }
-
-    // Eigen::MatrixXd Q_bar = Eigen::MatrixXd::Zero(N * n, N * n);
-    // Eigen::MatrixXd R_bar = Eigen::MatrixXd::Zero(N * m, N * m);
-
-    // for (int i = 0; i < N - 1; ++i) {
-    //     Q_bar.block(i * n, i * n, n, n) = Q;
-    // }
-    // Q_bar.block((N - 1) * n, (N - 1) * n, n, n) = P_N;
-
-    // for (int i = 0; i < N; ++i) {
-    //     R_bar(i, i) = R;
-    // }
-
-    // H = G.transpose() * Q_bar * G + R_bar;
-    // H = (H + H.transpose()) / 2.0;
-    // g = G.transpose() * Q_bar * F * x;
+    g = G.transpose() * Q_bar * F * x;
 }
 
 
@@ -213,4 +197,50 @@ void MPCController::dlqr(const Eigen::MatrixXd& A, const Eigen::MatrixXd& B,
 
     std::cerr << "Warning: DLQR did not converge after " << max_iter << " iterations" << std::endl;
     K = (R_mat + B.transpose() * P * B).inverse() * (B.transpose() * P * A);
+}
+
+
+
+
+Eigen::MatrixXd MPCController::dlyap(const Eigen::MatrixXd& A, const Eigen::MatrixXd& Q) {
+    const int n = A.rows();
+
+    // Convert the Lyapunov equation to a linear system Mx = b
+    Eigen::MatrixXd M = Eigen::MatrixXd::Zero(n * n, n * n);
+    Eigen::VectorXd b = Eigen::VectorXd::Zero(n * n);
+
+    // Build M matrix: I ⊗ (A⊗A) - I
+    Eigen::MatrixXd I = Eigen::MatrixXd::Identity(n, n);
+
+    // Construct the Kronecker product A⊗A
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            M.block(i*n, j*n, n, n) = A(i,j) * A;
+        }
+    }
+
+    M = M - Eigen::MatrixXd::Identity(n*n, n*n);
+
+    // Convert Q to vector form for the right-hand side
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            b(i*n + j) = -Q(i,j);
+        }
+    }
+
+    // Solve the linear system
+    Eigen::VectorXd x = M.colPivHouseholderQr().solve(b);
+
+    // Convert solution back to matrix form
+    Eigen::MatrixXd X = Eigen::MatrixXd::Zero(n, n);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            X(i,j) = x(i*n + j);
+        }
+    }
+
+    // Ensure symmetry
+    X = (X + X.transpose()) / 2.0;
+
+    return X;
 }
