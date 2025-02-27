@@ -2,6 +2,28 @@
 #include <qpOASES.hpp>
 #include <iostream>
 using namespace std;
+using namespace  Eigen;
+
+
+MatrixXd matrix_power(const MatrixXd& A, int power) {
+    if (power == 0) {
+        return MatrixXd::Identity(A.rows(), A.cols());
+    }
+    if (power == 1) {
+        return A;
+    }
+    return A * matrix_power(A, power - 1);
+}
+
+MatrixXd kroneckerProduct(const MatrixXd& A, const MatrixXd& B) {
+    MatrixXd result(A.rows() * B.rows(), A.cols() * B.cols());
+    for (int i = 0; i < A.rows(); i++) {
+        for (int j = 0; j < A.cols(); j++) {
+            result.block(i * B.rows(), j * B.cols(), B.rows(), B.cols()) = A(i, j) * B;
+        }
+    }
+    return result;
+}
 
 MPCController::MPCController() {
     // Initialize system matrices
@@ -103,7 +125,7 @@ void MPCController::compare_dlqr_and_dlyap()
 
 double MPCController::mpc_controller(const Eigen::VectorXd& x) {
     Eigen::MatrixXd H;
-    Eigen::VectorXd g;
+    Eigen::MatrixXd g;
     getPredictionMatrices(H, g, x);
 
     qpOASES::QProblem qp(N, 0);
@@ -114,7 +136,7 @@ double MPCController::mpc_controller(const Eigen::VectorXd& x) {
     Eigen::VectorXd lb = Eigen::VectorXd::Constant(N, umin);
     Eigen::VectorXd ub = Eigen::VectorXd::Constant(N, umax);
 
-    int nWSR = 100;
+    int nWSR = 2000;
     qp.init(H.data(), g.data(), nullptr, lb.data(), ub.data(), nullptr, nullptr, nWSR);
 
     Eigen::VectorXd U(N);
@@ -123,40 +145,43 @@ double MPCController::mpc_controller(const Eigen::VectorXd& x) {
     return U(0);
 }
 
-void MPCController::getPredictionMatrices(Eigen::MatrixXd& H, Eigen::VectorXd& g, const Eigen::VectorXd& x) {
+void MPCController::getPredictionMatrices(Eigen::MatrixXd& H, Eigen::MatrixXd&F, const Eigen::VectorXd& x) {
     int n = A.rows();
     int m = B.cols();
 
-    Eigen::MatrixXd F = Eigen::MatrixXd::Zero(N * n, n);
-    Eigen::MatrixXd G = Eigen::MatrixXd::Zero(N * n, N * m);
+    // First, rollout the dynamics to get Sx and Su
+    MatrixXd Sx = MatrixXd::Zero((N + 1) * n, n);
+    MatrixXd Su = MatrixXd::Zero((N + 1) * n, N * m);
 
-    F.block(0, 0, n, n) = A;
-    G.block(0, 0, n, m) = B;
+    // Calculate Sx and Su
+    for (int i = 0; i <= N; i++) {
+        MatrixXd A_power = matrix_power(A, i);
+        Sx.block(i * n, 0, n, n) = A_power;
 
-    for (int i = 1; i < N; ++i) {
-        F.block(i * n, 0, n, n) = A * F.block((i - 1) * n, 0, n, n);
-        G.block(i * n, 0, n, m) = A * G.block((i - 1) * n, 0, n, m);
-        if (i > 1) {
-            G.block(i * n, m, n, (i - 1) * m) = G.block((i - 1) * n, 0, n, (i - 1) * m);
+        for (int j = 0; j < N; j++) {
+            if (i - j - 1 >= 0) {
+                MatrixXd A_power_diff = matrix_power(A, i - j - 1);
+                Su.block(i * n, j * m, n, m) = A_power_diff * B;
+            }
         }
     }
 
-    Eigen::MatrixXd Q_bar = Eigen::MatrixXd::Zero(N * n, N * n);
-    Eigen::MatrixXd R_bar = Eigen::MatrixXd::Zero(N * m, N * m);
+    // Stack-up weight matrices
+    MatrixXd I = MatrixXd::Identity(N, N);
+    MatrixXd Q_bar = kroneckerProduct(I, Q);
+    MatrixXd Q_bar_extended = MatrixXd::Zero(Q_bar.rows() + n, Q_bar.cols() + n);
 
-    for (int i = 0; i < N - 1; ++i) {
-        Q_bar.block(i * n, i * n, n, n) = Q;
-    }
-//    Q_bar.block((N - 1) * n, (N - 1) * n, n, n) = P_N;
-    Q_bar.block((N - 1) * n, (N - 1) * n, n, n) = Q;
+    // Q_bar_extended << Q_bar, MatrixXd::Zero(Q_bar.rows(), n),
+    //     MatrixXd::Zero(n, Q_bar.cols()), P_N;
 
-    for (int i = 0; i < N; ++i) {
-        R_bar(i, i) = R;
-    }
+    Q_bar_extended.block(0,0,10,10) = Q_bar;
+    Q_bar_extended.block(10,10,n,n) = P_N;
 
-    H = G.transpose() * Q_bar * G + R_bar;
-    H = (H + H.transpose()) / 2.0;
-    g = G.transpose() * Q_bar * F * x;
+
+    MatrixXd R_bar = R * MatrixXd::Identity(N, N);
+
+     H = Su.transpose() * Q_bar_extended * Su + R_bar;
+     F = Sx.transpose() * Q_bar_extended * Su;
 }
 
 
