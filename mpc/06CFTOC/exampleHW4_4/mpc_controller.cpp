@@ -41,7 +41,8 @@ MPCController::MPCController() {
     // MPC parameters
     Ts = 0.1;
     N = 5;
-    Q = 100.0* Eigen::MatrixXd::Identity(2, 2);
+     Q = 1.0* Eigen::MatrixXd::Identity(2, 2);
+    // Q = 100.0* Eigen::MatrixXd::Identity(2, 2);//这里如果设置Q = 100I，会导致解震荡，目前还不知道为什么
     R = 1.0;
 
     x0.resize(2);
