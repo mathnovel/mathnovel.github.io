@@ -74,3 +74,16 @@ This is a big lesson. As a field, we still have not thoroughly learned it, as we
 One thing that should be learned from the bitter lesson is the great power of general purpose methods, of methods that continue to scale with increased computation even as the available computation becomes very great. The two methods that seem to scale arbitrarily in this way are search and learning.
 
 The second general point to be learned from the bitter lesson is that the actual contents of minds are tremendously, irredeemably complex; we should stop trying to find simple ways to think about the contents of minds, such as simple ways to think about space, objects, multiple agents, or symmetries. All these are part of the arbitrary, intrinsically-complex, outside world. They are not what should be built in, as their complexity is endless; instead we should build in only the meta-methods that can find and capture this arbitrary complexity. Essential to these methods is that they can find good approximations, but the search for them should be by our methods, not by us. We want AI agents that can discover like we can, not which contain what we have discovered. Building in our discoveries only makes it harder to see how the discovering process can be done.
+
+
+---------
+
+<!-- 引入不蒜子统计脚本 -->
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!-- 显示当前页面的访问量（即本文的阅读量） -->
+<p>本文访问量：<span id="busuanzi_value_page_pv"></span> 次</p>
+
+<!-- 可选：显示整个网站的总访问量 -->
+<p>网站总访问量：<span id="busuanzi_value_site_pv"></span> 次</p>
+
