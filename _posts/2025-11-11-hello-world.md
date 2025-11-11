@@ -23,3 +23,24 @@ header:  # 文章头部大图（可选）
 print("Hello Minimal Mistakes!")
 
 ````
+
+必填参数：title、date、layout: single（这三个缺失会导致文章样式错乱）。
+可选参数：categories、tags（用于分类和标签页索引）、excerpt（优化首页展示）、header（添加头部大图，增强美观）等。
+（2）正文内容（Markdown 格式）
+Front Matter 下方就是文章正文，用标准 Markdown 语法编写即可，minimal-mistakes 支持丰富的格式：
+标题：# 一级标题、## 二级标题 等
+加粗 / 斜体：**加粗**、*斜体*
+列表：- 项目1（无序列表）、1. 项目1（有序列表）
+图片：![图片描述](/assets/images/图片名.jpg)（图片需放在 /assets/images/ 文件夹，路径用相对路径）
+代码块：用 ``` 包裹，例如：
+
+````py
+print("Hello Minimal Mistakes!")
+````
+
+引用：> 这是一段引用
+4. 预览文章（可选）
+本地预览：如果本地安装了 Jekyll，在仓库根目录运行 bundle exec jekyll serve，访问 http://localhost:4000 即可实时查看（修改内容后刷新页面生效）。
+GitHub 预览：直接将文件提交到仓库，等待 1-2 分钟，访问 用户名.github.io 即可看到新文章（首页会自动更新列表）。
+5. 发布文章
+将编写好的 .md 文件上传到 _posts 文件夹，通过 GitHub 网页端「Commit」或本地 git push 提交，文章会自动发布。
