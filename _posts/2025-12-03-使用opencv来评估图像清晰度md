@@ -1,0 +1,1477 @@
+---
+title: "使用opencv来评估图像清晰度"
+date: 2025-12-03 12:00:00  # 改为当前或过去时间！
+categories:
+  - c++
+  - opencv
+tags:
+  - c++
+  - opencv
+layout: single
+author_profile: true
+excerpt: "使用opencv来评估图像清晰度"  # 修正拼写
+header:
+  overlay_image: /assets/images/post-header.jpg
+  overlay_filter: 0.5
+  caption: "IEO：[IEO](https://ieeoo.com)"
+---
+
+https://blog.csdn.net/qq314000558/article/details/85177722
+
+
+代码来自：
+https://www.jianshu.com/p/c6fb51110baf
+
+
+python代码可参考：
+https://zhuanlan.zhihu.com/p/97024018
+
+一份c++实现（是不是很本文贴出来的一样？）
+https://www.codeleading.com/article/5571432700/
+
+
+matlab:
+https://blog.csdn.net/kungfu_rabbit/article/details/90243838
+
+----
+
+无参考图像的清晰度评价方法  
+    from： http://nkwavelet.blog.163.com/blog/static/227756038201461532247117 
+
+在无参考图像的质量评价中，图像的清晰度是衡量图像质量优劣的重要指标，它能够较好的与人的主观感受相对应，图像的清晰度不高表现出图像的模糊。本文针对无参考图像质量评价应用，对目前几种较为常用的、具有代表性清晰度算法进行讨论分析，为实际应用中选择清晰度算法提供依据。
+
+---
+# （1）Brenner 梯度函数
+Brenner梯度函数是最简单的梯度评价函数，它只是简单的计算相邻两个像素灰度差的平方，该函数定义如下：
+
+<img src ="/assets/img/1.jpg" />
+
+其中：f(x,y) 表示图像f对应像素点(x,y)的灰度值，D(f)为图像清晰度计算结果(下同)。
+
+
+
+c++
+```c++
+/**        
+* Brenner梯度方法
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double brenner(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    double result = .0f;
+    for (int i = 0; i < gray_img.rows; ++i){
+        uchar *data = gray_img.ptr<uchar>(i);
+        for (int j = 0; j < gray_img.cols - 2; ++j){
+            result += pow(data[j + 2] - data[j], 2);
+        }
+    }
+ 
+    return result/gray_img.total();
+}
+```
+python
+```py
+#brenner梯度函数计算
+def brenner(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    shape = np.shape(img)
+    out = 0
+    for x in range(0, shape[0]-2):
+        for y in range(0, shape[1]):
+            out+=(int(img[x+2,y])-int(img[x,y]))**2
+    return out
+```
+
+matlab 
+```matlab
+%Brenner
+ N1 = 5;           %N1为要处理的图片张数
+ A = zeros(1,N1);   %zeros()定义指定行列的零矩阵；A矩阵用来存储每一幅图像的清晰度原值
+ X = zeros(1,N1);   %X用来存储做归一化处理后的函数值
+ %------------------------------
+ tic
+ for L=1: N1        
+ I=imread([int2str(L),'.jpg']); %读取图片，将值转换为字符串接受向量和矩阵输入
+I=double(I);         %精度存储问题
+ [M N]=size(I);     %M等于矩阵行数，N等于矩阵列数；size()获取矩阵行列
+ FI=0;        %变量，暂时存储每一幅图像的Brenner值
+ for x=1:M-2      %Brenner函数原理，计算相差两个位置的像素点的灰度值
+     for y=1:N 
+         FI=FI+(I(x+2,y)-I(x,y))*(I(x+2,y)-I(x,y)); 
+     end 
+ end 
+ A(1,L) = FI; 
+ end
+ time=toc
+ %对原始数据做归一化处理，线性函数归一化公式
+  for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+  end 
+%曲线拟合
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)]; 
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'r');     %画出拟合曲线，红线red
+title('梯度评价函数');
+xlabel('成像面位置');
+ylabel('归一化后的图像清晰度评价值');
+hold on;
+```
+
+
+
+---
+
+# （2）Tenengrad 梯度函数
+Tenengrad 梯度函数采用Sobel算子分别提取水平和垂直方向的梯度值，基与Tenengrad 梯度函数的图像清晰度定义如下：
+<img src ="/assets/img/9.jpg" />
+G(x,y) 的形式如下： 
+<img src ="/assets/img/10.jpg" />
+
+其中：T是给定的边缘检测阈值，Gx和Gy分别是像素点(x,y)处Sobel水平和垂直方向边缘检测算子的卷积，建议使用以下的Sobel算子模板来检测边缘：
+<img src ="/assets/img/11.jpg" />
+
+
+
+c++
+  ```c++
+/**        
+* Tenengrad梯度方法
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double tenengard(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, sobel_x, sobel_y, G;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img,CV_BGR2GRAY);
+    }
+ 
+    //分别计算x/y方向梯度
+    cv::Sobel(gray_img, sobel_x, CV_32FC1, 1, 0);
+    cv::Sobel(gray_img, sobel_y, CV_32FC1, 0, 1);
+    cv::multiply(sobel_x, sobel_x, sobel_x);
+    cv::multiply(sobel_y, sobel_y, sobel_y);
+    cv::Mat sqrt_mat = sobel_x + sobel_y;
+    cv::sqrt(sqrt_mat, G);
+ 
+    return cv::mean(G)[0];
+}
+
+  ```
+
+matlab 
+```matlab
+%Tenengrad
+ N1 =5; 
+ A = zeros(1,N1); 
+ X = zeros(1,N1); 
+ tic
+ for L=1: N1 
+ I=imread([int2str(L),'.jpg']); 
+ I=double(I); 
+ [M N]=size(I); 
+ %利用sobel算子gx,gy与图像做卷积，提取图像水平方向和垂直方向的梯度值
+GX = 0;   %图像水平方向梯度值
+GY = 0;   %图像垂直方向梯度值
+FI = 0;   %变量，暂时存储图像清晰度值
+T  = 0;   %设置的阈值
+ for x=2:M-1 
+     for y=2:N-1 
+         GX = I(x-1,y+1)+2*I(x,y+1)+I(x+1,y+1)-I(x-1,y-1)-2*I(x,y-1)-I(x+1,y-1); 
+         GY = I(x+1,y-1)+2*I(x+1,y)+I(x+1,y+1)-I(x-1,y-1)-2*I(x-1,y)-I(x-1,y+1); 
+         SXY= sqrt(GX*GX+GY*GY); %某一点的梯度值
+         %某一像素点梯度值大于设定的阈值，将该像素点考虑，消除噪声影响
+         if SXY>T 
+           FI = FI + SXY*SXY;    %Tenengrad值定义
+         end 
+     end 
+ end 
+ A(1,L) = FI; 
+ end 
+ time=toc
+ 
+% X = zeros(1,N1); 
+ for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+ end 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2); 
+Y=polyconf(p,x1,y1); 
+plot(x1,y1,'g'); 
+hold on;
+  ```
+
+----
+
+# （3）Laplacian 梯度函数
+Laplacian 梯度函数与Tenengrad梯度函数基本一致，用Laplacian算子替代Sobel算子即可，该算子定义如下：
+  <img src ="/assets/img/12.jpg" />
+
+因此基于Laplacian 梯度函数的图像星清晰度的定义如下：
+<img src ="/assets/img/13.jpg" />
+
+其中G(x,y)是像素点(x,y)处Laplacian算子的卷积。
+
+
+c++
+```c++
+ /**        
+* Laplacian 梯度函数
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double laplacian(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, lap_image;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    cv::Laplacian(gray_img, lap_image, CV_32FC1);
+    lap_image=cv::abs(lap_image);
+ 
+    return cv::mean(lap_image)[0];
+}
+ 
+```
+
+
+python
+```py
+#Laplacian梯度函数计算
+def Laplacian(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    return cv2.Laplacian(img,cv2.CV_64F).var()
+```
+
+
+matlab 
+
+```matlab
+%Laplace 
+ N1 = 5; 
+ A = zeros(1,N1); 
+ X = zeros(1,N1);
+ tic
+ for L=1: N1 
+ I=imread([int2str(L),'.jpg']); 
+ I=double(I); 
+ [M N]=size(I); 
+ FI=0; 
+ for x=2:M-1 
+     for y=2:N-1 
+         IXXIYY = -4*I(x,y)+I(x,y+1)+I(x,y-1)+I(x+1,y)+I(x-1,y); 
+             FI=FI+IXXIYY*IXXIYY;        %取各像素点梯度的平方和作为清晰度值    
+     end 
+ end  
+A(1,L) = FI; 
+ end 
+ time=toc
+ 
+ for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+ end 
+ 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2); 
+Y=polyconf(p,x1,y1); 
+plot(x1,y1,'m'); 
+hold off;
+```
+
+---
+
+
+
+#（4）SMD（灰度方差）函数
+当完全聚焦时，图像最清晰，图像中的高频分量也最多，故可将灰度变化作为聚焦评价的依据，灰度方差法的公式如下：
+<img src ="/assets/img/14.jpg" />
+
+
+c++
+
+```c++
+/**        
+* SMD（灰度方差）函数
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double smd(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, smd_image_x, smd_image_y, G;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    cv::Mat kernel_x(3, 3, CV_32F, cv::Scalar(0));
+    kernel_x.at<float>(1, 2) = -1.0;
+    kernel_x.at<float>(1, 1) = 1.0;
+    cv::Mat kernel_y(3, 3, CV_32F, cv::Scalar(0));
+    kernel_y.at<float>(0, 1) = -1.0;
+    kernel_y.at<float>(1, 1) = 1.0;
+    cv::filter2D(gray_img, smd_image_x, gray_img.depth(), kernel_x);
+    cv::filter2D(gray_img, smd_image_y, gray_img.depth(), kernel_y);
+ 
+    smd_image_x = cv::abs(smd_image_x);
+    smd_image_y = cv::abs(smd_image_y);
+    G = smd_image_x + smd_image_y;
+ 
+    return cv::mean(G)[0];
+}
+```
+
+python
+```py
+#SMD梯度函数计算
+def SMD(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    shape = np.shape(img)
+    out = 0
+    for x in range(1, shape[0]-1):
+        for y in range(0, shape[1]):
+            out+=math.fabs(int(img[x,y])-int(img[x,y-1]))
+            out+=math.fabs(int(img[x,y]-int(img[x+1,y])))
+    return out
+
+```
+
+---
+
+# （5）SMD2 （灰度方差乘积）函数
+灰度差分评价函数具有较好的计算性能，但其缺点也很明显，即在焦点附近灵敏度不高，即该函数在极值点附近过于平坦，从而导致聚焦精度难以提高。
+在文章《一种快速高灵敏度聚焦评价函数》（http://wenku.baidu.com/link?url=aAD0nTSU1w9aGDazbl0Q6QsA553xJHTKCGSedlqWewMiEidpXUg3bdPjflxSFVUFWBlQq8DUOIHUR6rz_BJTqeYLeP91SYnfJtzMER60ULG）
+
+中提出了一种新的评价函数，称之为灰度方差乘积法，即对每一个像素领域两个灰度差相乘后再逐个像素累加，该函数定义如下：
+<img src ="/assets/img//15.jpg" />
+
+
+c++
+
+```c++
+/**        
+* SMD2 （灰度方差乘积）函数
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double smd2(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, smd_image_x, smd_image_y, G;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    cv::Mat kernel_x(3, 3, CV_32F, cv::Scalar(0));
+    kernel_x.at<float>(1, 2) = -1.0;
+    kernel_x.at<float>(1, 1) = 1.0;
+    cv::Mat kernel_y(3, 3, CV_32F, cv::Scalar(0));
+    kernel_y.at<float>(1, 1) = 1.0;
+    kernel_y.at<float>(2, 1) = -1.0;
+    cv::filter2D(gray_img, smd_image_x, gray_img.depth(), kernel_x);
+    cv::filter2D(gray_img, smd_image_y, gray_img.depth(), kernel_y);
+ 
+    smd_image_x = cv::abs(smd_image_x);
+    smd_image_y = cv::abs(smd_image_y);
+    cv::multiply(smd_image_x, smd_image_y, G);
+ 
+    return cv::mean(G)[0];
+}
+ 
+
+```
+
+python
+```py
+#SMD2梯度函数计算
+def SMD2(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    shape = np.shape(img)
+    out = 0
+    for x in range(0, shape[0]-1):
+        for y in range(0, shape[1]-1):
+            out+=math.fabs(int(img[x,y])-int(img[x+1,y]))*math.fabs(int(img[x,y]-int(img[x,y+1])))
+    return out
+```
+
+---
+
+
+# （6）方差函数
+因为清晰聚焦的图像有着比模糊图像更大的灰度差异，可以将方差函数作为评价函数：
+<img src ="/assets/img//16.jpg" />
+
+  其中：u为整幅图像的平均灰度值，该函数对噪声比较敏感，图像画面越纯净，函数值越小。
+
+
+
+python
+```py
+#方差函数计算
+def variance(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    out = 0
+    u = np.mean(img)
+    shape = np.shape(img)
+    for x in range(0,shape[0]):
+        for y in range(0,shape[1]):
+            out+=(img[x,y]-u)**2
+    return out
+```
+
+matlab 
+
+```matlab
+%Variance
+ N1 = 5; 
+ A = zeros(1,N1); 
+ X = zeros(1,N1); 
+tic
+ for L=1: N1
+ I=imread([int2str(L),'.jpg']);  
+ I=double(I); 
+ [M N]=size(I);  
+ gama = 0;   %gama图像平均灰度值
+ %求gama
+ for x=1:M 
+     for y=1:N 
+         gama = gama + I(x,y); 
+     end 
+ end 
+ gama = gama/(M*N); 
+  
+ FI=0; 
+ for x=1:M 
+     for y=1:N 
+         FI=FI+(I(x,y)-gama)*(I(x,y)-gama); 
+     end 
+ end 
+  A(1,L) = FI;
+ end 
+ time=toc
+ for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+ end 
+  
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+ [p,S]=polyfit(x1,y1,2); 
+ Y=polyconf(p,x1,y1); 
+ plot(x1,y1,'b');
+ hold on;
+```
+
+
+---
+  # （7）能量梯度函数 （Energy of Gradient,EOG）
+能量梯度函数更适合实时评价图像清晰度，该函数定义如下：
+<img src ="/assetes/img/17.jpg" />
+
+
+
+c++代码
+```c++
+/**        
+ * 能量梯度函数
+ *  
+ * Inputs:  
+ * @param image: 
+ * Return: double   
+*/
+double energy_gradient(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, smd_image_x, smd_image_y, G;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    cv::Mat kernel_x(3, 3, CV_32F, cv::Scalar(0));
+    kernel_x.at<float>(1, 2) = -1.0;
+    kernel_x.at<float>(1, 1) = 1.0;
+    cv::Mat kernel_y(3, 3, CV_32F, cv::Scalar(0));
+    kernel_y.at<float>(1, 1) = 1.0;
+    kernel_y.at<float>(2, 1) = -1.0;
+    cv::filter2D(gray_img, smd_image_x, gray_img.depth(), kernel_x);
+    cv::filter2D(gray_img, smd_image_y, gray_img.depth(), kernel_y);
+ 
+    cv::multiply(smd_image_x, smd_image_x, smd_image_x);
+    cv::multiply(smd_image_y, smd_image_y, smd_image_y);
+    G = smd_image_x + smd_image_y;
+ 
+    return cv::mean(G)[0];
+}
+ 
+```
+
+matlab代码：
+```matlab
+%EOG(Energy Of Grad)
+ N1 = 5;      %要处理的图片张数
+ A = zeros(1,N1);  %存储每一幅图像清晰度评价值
+ X = zeros(1,N1);  %存储做归一化处理后的评价值
+tic     %计时
+for L=1: N1 
+ I=imread([int2str(L),'.jpg']); %连续读取图片
+ I=double(I); 
+ [M N]=size(I); 
+ FI=0; 
+ for x=1:M-1 
+     for y=1:N-1 
+          % x方向和y方向的相邻像素灰度值只差的的平方和作为清晰度值
+         FI=FI+(I(x+1,y)-I(x,y))*(I(x+1,y)-I(x,y))+(I(x,y+1)-I(x,y))*(I(x,y+1)-I(x,y));
+     end 
+ end 
+  
+ A(1,L) = FI; 
+end 
+time=toc
+%-------------------------------- 
+%对图像清晰度值做归一化处理，线性函数归一化公式
+ for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+ end 
+%做曲线拟合输出函数曲线  
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2); 
+Y=polyconf(p,x1,y1); 
+plot(x1,y1,'y');
+hold on;
+```
+
+python:
+
+```py
+#energy函数计算
+def energy(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    shape = np.shape(img)
+    out = 0
+    for x in range(0, shape[0]-1):
+        for y in range(0, shape[1]-1):
+            out+=((int(img[x+1,y])-int(img[x,y]))**2)*((int(img[x,y+1]-int(img[x,y])))**2)
+    return out
+
+```
+
+---
+#（8）Vollath函数
+Vollath函数定义如下：
+<img src ="/assetes/img/18.jpg" />
+ 其中：u为整幅图像的平均灰度值，M和N分别为图像宽和高。
+
+
+python
+```py
+#Vollath函数计算
+def Vollath(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    shape = np.shape(img)
+    u = np.mean(img)
+    out = -shape[0]*shape[1]*(u**2)
+    for x in range(0, shape[0]-1):
+        for y in range(0, shape[1]):
+            out+=int(img[x,y])*int(img[x+1,y])
+    return out
+```
+
+ ---
+
+ # （9）熵函数
+基于统计特征的熵函数是衡量图像信息丰富程度的一个重要指标，有信息论可知，一幅图像 f 的信息量是由该图像的信息熵 D(f) 来度量：
+<img src ="./images/19.jpg" />
+
+ 其中：Pi 是图像中灰度值为i的像素出现的概率，L为灰度级总数（通常取值256）。根据Shannon信息论，熵最大时信息量最多。将此原理应用到对焦过程，D(f)越大则图像越清晰。熵函数灵敏度不高，依据图像内容不同容易出现与真实情况相反的结果。
+```py
+#entropy函数计算
+def entropy(img):
+    '''
+    :param img:narray 二维灰度图像
+    :return: float 图像越清晰越大
+    '''
+    out = 0
+    count = np.shape(img)[0]*np.shape(img)[1]
+    p = np.bincount(np.array(img).flatten())
+    for i in range(0, len(p)):
+        if p[i]!=0:
+            out-=p[i]*math.log(p[i]/count)/count
+    return out
+
+```
+
+# （10） EAV点锐度算法函数
+徐贵力、张霞等提出了一种基于边缘锐度的算法用于评价图像的清晰度。通过统计图像某一边缘方向的灰度变化情况来评价。计算公式如下：
+<img src ="/assets/img/20.jpg" />
+
+ 其中：df/dx为边缘法向的灰度变化率，f(b) - f(a)为该方向的总体灰度变化。该算法只对图像的特定边缘区域做统计，能否代表整幅图像的清晰度仍有疑问，此外计算前需人工选定边缘区域，不便实现程序运算的自动化，因为王鸿南等在论文
+  《图像清晰度评价方法研究》（http://wenku.baidu.com/link?url=cBr9GD7INQgTwlQG56M17w444gFahlyjCbFTz4YzbAtX-y5OhlWA4mJ49rmyLfgNei7mj0lLei2LWia_UpzzSWvvSN2TR5i10Gc25UhNpoC）
+   中对上述算法进行了改进，改进如下：
+
+a)  将针对边缘的梯度计算改为逐个像素领域梯度的计算，以便算法能对图像的整体进行评价，并使算法实现自动化。
+b)  对方格像素 8 领域的灰度变化进行距离加权，水平和垂直方向的权重为1，而45度和135度方向的权重为 
+<img src ="/assets/img/21.jpg" />
+
+c)  对计算结果按图像的大小进行规格化，以便于图像的对比。
+经过以上三步改进后的点锐度算法为：
+<img src ="/assets/img/22.jpg" />
+其中：M和N为图像的行数和列数。
+
+
+
+c++
+```c++
+/**        
+* EAV点锐度算法函数
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double eav(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, smd_image_x, smd_image_y, G;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    double result = .0f;
+    for (int i = 1; i < gray_img.rows-1; ++i){
+        uchar *prev = gray_img.ptr<uchar>(i - 1);
+        uchar *cur = gray_img.ptr<uchar>(i);
+        uchar *next = gray_img.ptr<uchar>(i + 1);
+        for (int j = 0; j < gray_img.cols; ++j){
+            result += (abs(prev[j - 1] - cur[i])*0.7 + abs(prev[j] - cur[j]) + abs(prev[j + 1] - cur[j])*0.7 +
+                abs(next[j - 1] - cur[j])*0.7 + abs(next[j] - cur[j]) + abs(next[j + 1] - cur[j])*0.7 +
+                abs(cur[j - 1] - cur[j]) + abs(cur[j + 1] - cur[j]));
+        }
+    }
+   
+    return result / gray_img.total();
+}
+
+ 
+```
+
+---
+
+# （11）Reblur 二次模糊
+如果一幅图像已经模糊了，那么再对它进行一次模糊处理，高频分量变化不大；但如果原图是清楚的，对它进行一次模糊处理，则高频分量变化会非常大。因此可以通过对待评测图像进行一次高斯模糊处理，得到该图像的退化图像，然后再比较原图像和退化图像相邻像素值的变化情况，根据变化的大小确定清晰度值的高低，计算结果越小表明图像越清晰，反之越模糊。这种思路可称作基于二次模糊的清晰度算法，其算法简化流程如下图：
+<img src ="/assets/img/23.jpg" />
+
+---
+# （12）NRSS 梯度结构相似度
+Wang等利用人类视觉系统（HVS）非常适于提取目标的结构信息的特点，提出了图像结构相似度概念（SSIM），认为只要能计算目标结构信息的变化，就能够得到感知图像失真值。杨春玲等基于此思路，将该方法引入到计算全参考图像的清晰度评价中，认为图像的清晰度可以使用目标图像与参考图像间的结构相似度来表示，而图像间的结构相似度包含以下三个部分的比较：
+<img src ="/assets/img/24.jpg" />
+
+ 而C1、C2和C3 是为了避免分母为0而设的常数。图像的结构相似度由下式计算可得：
+
+ <img src ="/assets/img/25.jpg" />
+
+ 为简单起见可以令
+ <img src ="/assets/img/30.png" />
+
+谢小甫等进一步改进了杨春玲等的方法，根据结构相似度的相关思想结合人烟视觉系统的相关特点，设计了无参考图像清晰度的评价指标（NRSS），计算方法如下：
+ <img src ="/assets/img/31.png" />
+
+
+
+c++
+```c++
+/**        
+* 误差灵敏度分析和结构相似度分析
+*  
+* Inputs:  
+* @param i1: 
+* @param i2: 
+* Return: double   
+*/
+double ssim(cv::Mat &i1, cv::Mat & i2)
+{
+    const double C1 = 6.5025, C2 = 58.5225;
+    int d = CV_32F;
+    cv::Mat I1, I2;
+    i1.convertTo(I1, d);
+    i2.convertTo(I2, d);
+    cv::Mat I1_2 = I1.mul(I1);
+    cv::Mat I2_2 = I2.mul(I2);
+    cv::Mat I1_I2 = I1.mul(I2);
+    cv::Mat mu1, mu2;
+    GaussianBlur(I1, mu1, cv::Size(11, 11), 1.5);
+    GaussianBlur(I2, mu2, cv::Size(11, 11), 1.5);
+    cv::Mat mu1_2 = mu1.mul(mu1);
+    cv::Mat mu2_2 = mu2.mul(mu2);
+    cv::Mat mu1_mu2 = mu1.mul(mu2);
+    cv::Mat sigma1_2, sigam2_2, sigam12;
+    GaussianBlur(I1_2, sigma1_2, cv::Size(11, 11), 1.5);
+    sigma1_2 -= mu1_2;
+    GaussianBlur(I2_2, sigam2_2, cv::Size(11, 11), 1.5);
+    sigam2_2 -= mu2_2;
+    GaussianBlur(I1_I2, sigam12, cv::Size(11, 11), 1.5);
+    sigam12 -= mu1_mu2;
+    cv::Mat t1, t2, t3;
+    t1 = 2 * mu1_mu2 + C1;
+    t2 = 2 * sigam12 + C2;
+    t3 = t1.mul(t2);
+ 
+    t1 = mu1_2 + mu2_2 + C1;
+    t2 = sigma1_2 + sigam2_2 + C2;
+    t1 = t1.mul(t2);
+ 
+    cv::Mat ssim_map;
+    divide(t3, t1, ssim_map);
+    cv::Scalar mssim = cv::mean(ssim_map);
+ 
+    double ssim = (mssim.val[0] + mssim.val[1] + mssim.val[2]) / 3;
+    return ssim;
+}
+ 
+/**        
+* NRSS梯度结构相似度
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double nrss(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img, Ir, G, Gr;
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    //构造参考图像
+    cv::GaussianBlur(gray_img, Ir, cv::Size(7, 7), 6, 6);
+ 
+    //提取图像和参考图像的梯度信息
+    cv::Sobel(gray_img, G, CV_32FC1, 1, 1);//计算原始图像sobel梯度
+    cv::Sobel(Ir, Gr, CV_32FC1, 1, 1);//计算构造函数的sobel梯度
+ 
+    //找出梯度图像 G 中梯度信息最丰富的 N 个图像块，n=64(即划分为8x8的大小)
+    //计算每个小方块的宽/高
+    int block_cols = G.cols * 2 / 9;
+    int block_rows = G.rows * 2 / 9;
+    //获取方差最大的block
+    cv::Mat best_G,best_Gr;
+    float max_stddev = .0f;
+    int pos = 0;
+    for (int i = 0; i < 64; ++i){
+        int left_x = (i % 8)*(block_cols / 2);
+        int left_y = (i / 8)*(block_rows / 2);
+        int right_x = left_x + block_cols;
+        int right_y = left_y + block_rows;
+ 
+        if (left_x < 0) left_x = 0;
+        if (left_y < 0) left_y = 0;
+        if (right_x >= G.cols) right_x = G.cols - 1;
+        if (right_y >= G.rows) right_y = G.rows - 1;
+ 
+        cv::Rect roi(left_x,left_y,right_x-left_x,right_y-left_y);
+        cv::Mat temp=G(roi).clone();
+        cv::Scalar mean,stddev;
+        cv::meanStdDev(temp, mean, stddev);
+        if (stddev.val[0]>max_stddev){
+            max_stddev = static_cast<float>(stddev.val[0]);
+            pos = i;
+            best_G = temp;
+            best_Gr = Gr(roi).clone();
+        }
+    }
+   
+    //计算结构清晰度NRSS
+    double result = 1 - ssim(best_G, best_Gr);
+ 
+    return result;
+}
+
+ 
+
+```
+
+
+ ----
+
+#（13 ）FFT 图像变换域
+      待写！
+
+
+----
+#（14）No-Reference Perceptual Quality Assessment of JPEG Compressed Images
+
+在这篇文章中，作者【Zhou Wang】等针对JPEG压缩图片提出了一种新的无参图像质量评价方法。
+JPEG图片是基于8x8块的DCT变换的编码技巧，它是有损的因为对DCT变换系数做量化的时候会产生量化误差。量化就会导致模糊和块效应。模糊主要是因为丢失了高频的DCT系数。块效应是由于块边界的不连续性，因为每个分块的量化是独立的。
+我们用 f(x, y) 表示一幅图片，图片尺寸为 MxN，计算跨越每个水平线的信号差：
+ <img src ="/assets/img/32.jpg" />
+
+首先计算块效应，块效应的定义就是左右跨越边界的信号差的平均值：
+ <img src ="/assets/img/33.jpg" />
+ 然后计算块内信号差的平均值：
+
+<img src ="/assets/img/34.jpg" />
+
+再计算zero-crossing（ZC）率，ZC是边界跨零的意思，也就是说相邻两个点的
+ <img src ="/assets/img/35.jpg" />    
+值的乘积为负数，也就是一正一负，因此对于[1, N - 2]范围内的y，定义如下变量：
+ <img src ="/assets/img/36.jpg" />    
+
+ 于是水平方向的ZC率定义如下：
+  <img src ="/assets/img/37.jpg" /> 
+
+同理，我们可以计算垂直方向的几个指标值 
+ <img src ="/assets/img/38.jpg" /> 
+
+ 最后得到这几个指标的水平和垂直方向的平均值：
+
+ <img src ="/assets/img/39.jpg" /> 
+
+  其中
+ <img src ="/assets/img/40.jpg" /> 
+ 是从大量实验中提炼出来的模型参数。本文中所采用的参数值如下：
+  <img src ="/assets/img/41.jpg" /> 
+
+----
+
+
+# （15）No-Reference Image Quality Assessment forJPEG/JPEG2000 Coding
+这篇文章的作者在前面那篇文章的基础上，重新定义了新的质量指标：
+ <img src ="/assets/img/42.jpg" /> 
+ 其实 S 就是在（14）中已经得到的质量评价值。
+
+ ----
+
+#（16）No-Reference Image Quality Assessment  using Blur and Noise
+
+图像质量受很多因素影响，例如：亮度、对比度、色调、边界、噪声、模糊等。在本文中，我们假定噪声和模糊是影响图像质量最重要的两个因素。简单起见，只对彩色图像的亮度分量做模糊和噪声监测。本文的图像质量评价算法框架图如下：
+<img src ="/assets/img/43.jpg" /> 
+
+A）模糊检测
+模糊估计分为两个步骤：首先是边缘检测，然后是模糊确定。此处模糊估计是通过计算当前像素点与领域内像素点均值之差来确定。我们用f(x,y) 表示图片，其中<img src ="/assets/img/44.jpg" />.
+
+定义水平绝对差如下：
+<img src ="/assets/img/45.jpg" /> 
+
+<img src ="/assets/img/46.png" /> 
+
+ 接下来我们检测边缘点是否模糊。定义：
+ <img src ="/assets/img/47.jpg" /> 
+
+  <img src ="/assets/img/48.png" /> 
+
+<img src ="/assets/img/49.png" /> 
+
+<img src ="/assets/img/50.png" /> 
+<img src ="/assets/img/51.png" />
+
+
+
+c++ 
+```c++
+/**        
+* 模糊检测
+*  
+* Inputs:  
+* @param gray_img: 
+* @param blur_mean: 
+* @param blur_ratio: 
+* Return: void   
+*/
+void comput_blur_IQA(cv::Mat &src, float &blur_mean, float &blur_ratio)
+{
+    cv::Mat gray_img = src.clone();
+    //计算水平/竖直差值获取梯度图
+    cv::Mat grad_h, grad_v;
+    cv::Mat kernel_h = cv::Mat::zeros(cv::Size(3, 3), CV_32FC1);
+    kernel_h.at<float>(0, 1) = -1;
+    kernel_h.at<float>(2, 1) = 1;
+    cv::filter2D(gray_img, grad_h, CV_32FC1, kernel_h);
+    cv::Mat kernel_v = cv::Mat::zeros(cv::Size(3, 3), CV_32FC1);
+    kernel_v.at<float>(1, 0) = -1;
+    kernel_v.at<float>(1, 2) = 1;
+    cv::filter2D(gray_img, grad_v, CV_32FC1, kernel_v);
+ 
+    //获取候选边缘点
+    //筛选条件：D_h > D_mean
+    float mean = static_cast<float>(cv::mean(grad_v)[0]);
+    cv::Mat mask = grad_h > mean;
+    mask = mask / 255;
+    mask.convertTo(mask, CV_32FC1);
+    cv::Mat C_h;
+    cv::multiply(grad_h, mask, C_h);
+ 
+ 
+    //进一步筛选边缘点
+    //筛选条件：C_h(x,y) > C_h(x,y-1) and C_h(x,y) > C_h(x,y+1)
+    cv::Mat edge = cv::Mat::zeros(C_h.rows, C_h.cols, CV_8UC1);
+    for (int i = 1; i < C_h.rows-1; ++i){
+        float *prev = C_h.ptr<float>(i - 1);
+        float *cur = C_h.ptr<float>(i);
+        float *next = C_h.ptr<float>(i + 1);
+        uchar *data = edge.ptr<uchar>(i);
+        for (int j = 0; j < C_h.cols; ++j){
+            if (prev[j] < cur[j] && next[j] < cur[j]){
+                data[j] = 1;
+            }
+        }
+    }
+ 
+    //检测边缘点是否模糊
+    //获取inverse blur
+    cv::Mat A_h = grad_h / 2;
+    cv::Mat BR_h=cv::Mat(gray_img.size(),CV_32FC1);
+    gray_img.convertTo(gray_img, CV_32FC1);
+    cv::absdiff(gray_img, A_h, BR_h);
+    cv::divide(BR_h, A_h, BR_h);
+    cv::Mat A_v = grad_v / 2;
+    cv::Mat BR_v;
+    cv::absdiff(gray_img, A_v, BR_v);
+    cv::divide(BR_v, A_v, BR_v);
+ 
+    cv::Mat inv_blur = cv::Mat::zeros(BR_v.rows, BR_v.cols, CV_32FC1);
+    for (int i = 0; i < inv_blur.rows; ++i){
+        float *data_v = BR_v.ptr<float>(i);
+        float *data = inv_blur.ptr<float>(i);
+        float *data_h = BR_h.ptr<float>(i);
+        for (int j = 0; j < inv_blur.cols; ++j){
+            data[j] = data_v[j]>data_h[j] ? data_v[j] : data_h[j];
+        }
+    }
+    //获取最终模糊点
+    cv::Mat blur = inv_blur < 0.1 / 255;
+    blur.convertTo(blur, CV_32FC1);
+ 
+    //计算边缘模糊的均值和比例
+    int sum_inv_blur = cv::countNonZero(inv_blur);
+    int sum_blur = cv::countNonZero(blur);
+    int sum_edge = cv::countNonZero(edge);
+    blur_mean = static_cast<float>(sum_inv_blur) / sum_blur;
+    blur_ratio = static_cast<float>(sum_blur) / sum_edge;
+}
+ 
+/**        
+* 噪点检测
+*  
+* Inputs:  
+* @param gray_img: 
+* @param noise_mean: 
+* @param noise_ratio: 
+* Return: void   
+*/
+void compute_noise_IQA(cv::Mat &gray_img, float &noise_mean, float &noise_ratio)
+{
+    //均值滤波去除噪声对边缘检测的影响
+    cv::Mat blur_img;
+    cv::blur(gray_img, blur_img, cv::Size(3, 3));
+ 
+    //进行竖直方向边缘检测
+    cv::Mat grad_h, grad_v;
+    cv::Mat kernel_h = cv::Mat::zeros(cv::Size(3, 3), CV_32FC1);
+    kernel_h.at<float>(0, 1) = -1;
+    kernel_h.at<float>(2, 1) = 1;
+    cv::filter2D(gray_img, grad_h, CV_32FC1, kernel_h);
+    cv::Mat kernel_v = cv::Mat::zeros(cv::Size(3, 3), CV_32FC1);
+    kernel_v.at<float>(1, 0) = -1;
+    kernel_v.at<float>(1, 2) = 1;
+    cv::filter2D(gray_img, grad_v, CV_32FC1, kernel_v);
+ 
+    //筛选候选点
+    //水平/竖直梯度的均值
+    float D_h_mean = .0f, D_v_mean = .0f;
+    D_h_mean = static_cast<float>(cv::mean(grad_h)[0]);
+    D_v_mean = static_cast<float>(cv::mean(grad_v)[0]);
+ 
+    //获取候选噪声点
+    cv::Mat N_cand = cv::Mat::zeros(gray_img.rows, gray_img.cols, CV_32FC1);
+    for (int i = 0; i < gray_img.rows; ++i){
+        float *data_h = grad_h.ptr<float>(i);
+        float *data_v = grad_v.ptr<float>(i);
+        float *data = N_cand.ptr<float>(i);
+        for (int j = 0; j < gray_img.cols; ++j){
+            if (data_v[j] < D_v_mean && data_h[j] < D_h_mean){
+                data[j] = data_v[j]>data_h[j] ? data_v[j] : data_h[j];
+            }
+        }
+    }
+ 
+    //最终的噪声点
+    float N_cand_mean = static_cast<float>(cv::mean(N_cand)[0]);
+    cv::Mat mask = (N_cand>N_cand_mean)/255;
+    mask.convertTo(mask, CV_32FC1);
+    cv::Mat N;
+    cv::multiply(N_cand, mask, N);
+ 
+    //计算噪声的均值和比率
+    float sum_noise = static_cast<float>(cv::sum(N)[0]);
+    int sum_noise_cnt = cv::countNonZero(N);
+    noise_mean = sum_noise / (sum_noise_cnt + 0.0001);
+    noise_ratio = static_cast<float>(sum_noise_cnt) / N.total();
+}
+ 
+/**        
+* 对模糊和噪声进行无参考图像质量评估 
+*  
+* Inputs:  
+* @param image: 
+* Return: double   
+*/
+double blur_noise_IQA(cv::Mat &image)
+{
+    assert(image.empty());
+ 
+    cv::Mat gray_img=cv::Mat(image.size(),CV_8UC1);
+    if (image.channels() == 3){
+        cv::cvtColor(image, gray_img, CV_BGR2GRAY);
+    }
+ 
+    //1、模糊检测
+    float blur_mean = 0.f, blur_ratio = 0.f;
+    comput_blur_IQA(gray_img, blur_mean, blur_ratio);
+ 
+    //2、噪声点检测
+    float noise_mean = 0.f, noise_ratio = 0.f;
+    compute_noise_IQA(gray_img, noise_mean, noise_ratio);
+ 
+    //3、噪声和模糊的组合
+    double result = 1 - (blur_mean + 0.95*blur_ratio + 0.3*noise_mean + 0.75*noise_ratio);
+    return result;
+}
+ 
+
+```
+
+
+-----
+
+# 实验
+为了测试以上评价方法的准确性，我们才用C语言编程实现以上算法，由于以上算法都是针对灰度图，因此在处理彩色图像的时候，首先将彩色图像转化为灰度图（简单起见，转化算法采用了 grey = (R + G + B) /3）。 测试图片采用了美国德州大学图像与视频工程实验室提供的图像质量评价数据库。该图像数据库包含了29幅原始图像，并利用原始图像生成了包括JPEG压缩、JPEG2000压缩、高斯模糊、Fastfsding（在Fastading通道中传输传输错误）、WhiteNoise（白噪声）五类失真在内的失真图像共779幅。此处我们选用JPEG目录下的部分图片做测试。
+首先来看看第一组测试图片：
+
+
+
+DatabaseRelease2\jpeg\img29.bmp
+<img src ="/assets/img/52.jpg" />
+
+DatabaseRelease2\jpeg\img42.bmp   （原始图片）
+<img src ="/assets/img/53.jpg" />
+
+DatabaseRelease2\jpeg\img77.bmp
+<img src ="/assets/img/54.jpg" />
+
+DatabaseRelease2\jpeg\img81.bmp
+<img src ="/assets/img/55.jpg" />
+
+DatabaseRelease2\jpeg\img183.bmp
+<img src ="/assets/img/56.jpg" />
+
+
+测试数据（阈值T = 50）
+<img src ="/assets/img/57.png" />
+
+Remark：
+  1）肉眼可以分辨以上五幅图像的质量排名为：img42 > img81 > img77 > img29 > img183
+    2）与主观感知一致的算法有：Brenner、Tenengrad、SMD、SMD2、Energy、Entropy、EAV、JPEG、JPEG2
+    3）Variance、Vollath算法所得数据非常接近，无法分辨出图像质量。
+  4）Laplacian在判断img29 和 img183的时候出现失误，这两个图片的质量都非常差
+
+
+
+#### 第二组测试图片（省略了图片显示，有兴趣的朋友可以去网上下载）：
+DatabaseRelease2\jpeg\img20.bmp    （原始图片）
+DatabaseRelease2\jpeg\img23.bmp
+DatabaseRelease2\jpeg\img56.bmp
+DatabaseRelease2\jpeg\img152.bmp
+DatabaseRelease2\jpeg\img215.bmp
+DatabaseRelease2\jpeg\img228.bmp
+
+ 
+<img src ="/assets/img/58.png" />
+
+
+
+Remark：
+  1）肉眼可以分辨以上图片的质量排名为：img20 > img228 > img56 > img152 > img23 > img215
+    2）与主观感知一致的算法有：Brenner、Tenengrad、Laplacian、SMD2、Energy、JPEG、JPEG2
+  3）Vollat、Entropy算法失误比较多。
+  4）SMD、EAV在判断img20 和 img228的时候出现失误，这两个图片质量都非常好，肉眼有时候很难分辨，因此这种失误在可以接受的范围。
+  5）Variance 在判断img23 和 img215的时候出现失误，这两个图片质量都非常差。
+
+
+-----
+
+参考文献：
+1. 面向无参考图像的清晰度评价方法研究 http://wenku.baidu.com/link?url=8mGINb7ZbPYIYYr25N8TFSXh4flo6fV5AGTBNU_oY5NJ0gmy-USEmQ7kNgf42FU-u0NYgK01vFUVDa3cAk7cdAHsXsksAdG6GsEkEsfUel3
+2. 图像清晰度评价方法研究 http://wenku.baidu.com/link?url=cBr9GD7INQgTwlQG56M17w444gFahlyjCbFTz4YzbAtX-y5OhlWA4mJ49rmyLfgNei7mj0lLei2LWia_UpzzSWvvSN2TR5i10Gc25UhNpoC
+3. 数字图像清晰度评价函数的研究与改进 http://www.go-gddq.com/down/2012-04/12040723506216.pdf
+4. 一种针对图像模糊的无参考质量评价指标 http://www.docin.com/p-405257712.html
+5. 一种快速高灵敏度聚焦评价函数 http://wenku.baidu.com/link?url=aAD0nTSU1w9aGDazbl0Q6QsA553xJHTKCGSedlqWewMiEidpXUg3bdPjflxSFVUFWBlQq8DUOIHUR6rz_BJTqeYLeP91SYnfJtzMER60ULG
+6. No-Reference Perceptual Quality  http://wenku.baidu.com/link?url=PsMLsgOSiTTEd0DgDOQQufgy1glkPXT1xfv6_0Zydj4GqMwC5G_4pw7ChjOont-B6o1pdc_WQcq3sBUMVIPAP-N3WWIgsrMU75XvHY36SjWAssessment of JPEG Compressed Images
+7. No-Reference Image Quality Assessment forJPEG/JPEG2000 Coding
+8. No-Reference Image Quality Assessment using Blur and Noise http://www.docin.com/p-212231445.html
+
+
+
+
+# (17)Roberts函数
+（来自https://blog.csdn.net/kungfu_rabbit/article/details/90243838）
+Roberts函数与能量梯度函数相似，它是利用对角方向像素点灰度值之差。将4个相邻像素点的灰度值交叉相减的平方和作为每个像素点的梯度值，对所有像素梯度值累加作为清晰度评价函数值，表达式如下式所示：
+<img src ="/assets/img/59.png" />
+
+```matlab
+%Roberts
+ N1 = 5; 
+ A = zeros(1,N1); 
+ X = zeros(1,N1);
+ tic
+ for L=1: N1 
+ I=imread([int2str(L),'.jpg']); 
+ I=double(I); 
+ [M N]=size(I); 
+ FI=0; 
+ %Robert算子原理，对角方向相邻的两像素之差 
+ for x=1:M-1 
+     for y=1:N-1 
+         FI= FI + (abs(I(x,y)-I(x+1,y+1))+abs(I(x+1,y)-I(x,y+1))); 
+     end 
+ end 
+ A(1,L) = FI;  
+ end 
+ time=toc
+ 
+  for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+ end 
+ 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2); 
+Y=polyconf(p,x1,y1); 
+plot(x1,y1,'c'); 
+hold on;
+```
+
+---
+# (18 )频域评价函数
+(来自https://blog.csdn.net/kungfu_rabbit/article/details/90243838)
+<img src ="/assets/img/60.png" />
+
+python
+```py
+%DFT
+N1 = 5;      %N1要处理的图像张数        
+A = zeros(1,N1);  %A向量用来存储每一幅图像的清晰度原值
+X = zeros(1,N1);  %X用来存储做归一化处理后的清晰度函数值
+%----------------------
+tic
+for L=1: N1        
+I=imread([int2str(L),'.jpg']); 
+I=rgb2gray(I);
+I=double(I);        
+[M N]=size(I);          
+fftI = fft2(I);   %进行二维离散傅里叶变换
+sfftI = fftshift(fftI);   %移位，直流分量移到图像中心
+magnitude = abs(sfftI);      %取模值
+FI=0; 
+for u=1:M
+    for v=1:N
+        FI=FI+sqrt(u*u+v*v)*magnitude(u,v);      %基于离散傅里叶变换的清晰度评价函数
+    end
+end
+A(1,L) = FI/(M*N);
+end
+time=toc
+%对原始数据做归一化处理，线性函数归一化公式
+%-------------------------
+  for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+  end 
+%曲线拟合，0为正焦位置，离焦-正焦-离焦
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'b');     %画出拟合曲线，红线red
+title('频域评价函数');
+xlabel('成像面位置');
+ylabel('归一化后的图像清晰度评价值');
+hold on;
+ 
+```
+
+----
+# (19) 离散余弦变换DCT
+<img src ="/assets/img/61.png" />
+
+matlab 
+```matlab
+%DCT
+N1 = 5;      %N1要处理的图像张数        
+A = zeros(1,N1);  %A向量用来存储每一幅图像的清晰度原值
+X = zeros(1,N1);  %X用来存储做归一化处理后的清晰度函数值
+%----------------------
+tic
+for L=1: N1        
+I=imread([int2str(L),'.jpg']); 
+I=rgb2gray(I);
+I=double(I)+10*randn(size(I));        
+[M N]=size(I);          
+dctI = dct2(I);   %进行二维离散傅里叶变换
+magnitude = abs(dctI);      %取模值
+FI=0; 
+for u=1:M
+    for v=1:N
+        FI=FI+(u+v)*magnitude(u,v);      %基于离散傅里叶变换的清晰度评价函数
+    end
+end
+A(1,L) = FI/(M*N);
+end
+time=toc
+%对原始数据做归一化处理，线性函数归一化公式
+%-------------------------
+  for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+  end 
+%曲线拟合，0为正焦位置，离焦-正焦-离焦
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)]; 
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'r');     %画出拟合曲线，红线red
+hold off;
+```
+
+
+---
+# (20) 基于信息熵的清晰度评价函数
+<img src ="/assets/img/62.png" />
+
+matlab
+```matlab
+%entropy
+N1 = 5;           %N1为要处理的图片张数
+A = zeros(1,N1);   %zeros()定义指定行列的零矩阵；A矩阵用来存储每一幅图像的清晰度原值
+X = zeros(1,N1);   %X用来存储做归一化处理后的函数值
+%处理图片
+tic
+for L=1: N1        
+ I=imread([int2str(L),'.jpg']); %读取图片，将值转换为字符串接受向量和矩阵输入
+ I=rgb2gray(I);
+ I=double(I); 
+ A(1,L)=entr(I);    %调用求熵值函数
+end
+time=toc
+%对原始数据做归一化处理，线性函数归一化公式
+ for W = 1:N1 
+   C = max(A); 
+   D = min(A); 
+   E = C-D; 
+   R = (A(1,W) - D)/(E); 
+   X(1,W) = R; 
+  end 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)]; 
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'r');     %画出拟合曲线，红线red
+title('基于信息熵的评价函数');
+xlabel('成像面位置');
+ylabel('归一化后的图像清晰度评价值');
+ 
+ 
+%定义子函数entr()，求一幅图像的熵值
+%-------------------------------------------
+function[H_img]= entr(I)   
+[C,R]=size(I); %求图像的规格
+Img_size=C*R; %图像像素点的总个数
+L=256; %图像的灰度级0-255
+H_img=0;  %图象熵
+nk=zeros(L,1); %存储图像灰度出现次数
+for i=1:C
+for j=1:R
+Img_level=I(i,j)+1; %获取图像的灰度级
+nk(Img_level)=nk(Img_level)+1; %统计每个灰度级像素的点数
+end
+end
+for k=1:L
+Ps(k)=nk(k)/Img_size; %计算每一个灰度级像素点所占的概率
+if Ps(k)~=0 %去掉概率为0的像素点
+H_img=-Ps(k)*log2(Ps(k))+H_img; %求熵值的公式
+end
+end
+end
+ 
+
+```
+
+---
+
+# (21) 基于统计学的清晰度评价函数
+<img src ="/assets/img/63.png" />
+
+matlab
+```matlab
+%Range
+N1 =5; 
+gray_level = 32; %灰度直方图中划分的灰度等级
+temp=zeros(1,gray_level);
+A = zeros(1,N1);  
+X = zeros(1,N1);
+tic
+for L=1: N1        
+ I=imread([int2str(L),'.jpg']); %读取图片，将值转换为字符串接受向量和矩阵输入
+ I=rgb2gray(I); 
+ I=double(I);   %-------没做数值类型，出错，曲线相反----------
+ [count,K] = imhist(I,gray_level);%imhist()画灰度分布直方图,count表示某一灰度区间的像素个数，K表示灰度区间取值
+ for y=1:gray_level 
+  temp(1,y)=count(y)*K(y);
+ end
+ A(1,L)=max(temp)-min(temp);
+end
+time=toc
+for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+end 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'g');     %画出拟合曲线，红线red
+title('统计学评价函数');
+xlabel('成像面位置');
+ylabel('归一化后的图像清晰度评价值');
+hold on
+```
+
+----
+
+# (22) Vollaths函数
+<img src ="/assets/img/64.png" />
+
+matlab
+```matlab
+%vollaths
+ N1 = 5;           %N1为要处理的图片张数
+ A = zeros(1,N1);   %zeros()定义指定行列的零矩阵；A矩阵用来存储每一幅图像的清晰度原值
+ X = zeros(1,N1);   %X用来存储做归一化处理后的函数值
+ %用一个for循环处理每一张图片
+ tic
+ for L=1: N1        
+ I=imread([int2str(L),'.jpg']); %读取图片，将值转换为字符串接受向量和矩阵输入
+ I=double(I);        %精度存储问题
+ [M N]=size(I);     %M等于矩阵行数，N等于矩阵列数；size()获取矩阵行列数
+ %begintime=clock; 
+  
+ FI=0;        %变量，暂时存储每一幅图像的Brenner值
+ for x=1:M-2      %Brenner函数原理，计算相差两个位置的像素点的灰度值
+     for y=1:N 
+         FI=FI+I(x,y)*abs(I(x+1,y)-I(x+2,y)); 
+     end 
+ end 
+ %time=etime(clock,begintime); 
+ A(1,L) = FI; 
+ end 
+ time=toc
+ %对原始数据做归一化处理，线性函数归一化公式
+  for W = 1:N1 
+     C = max(A); 
+     D = min(A); 
+     E = C-D; 
+     R = (A(1,W) - D)/(E); 
+     X(1,W) = R; 
+  end 
+ 
+x1=[-20 -10 0 10 20 ]; 
+y1 = [X(1,1) X(1,2) X(1,3) X(1,4) X(1,5)];
+[p,S]=polyfit(x1,y1,2);   %polyfit(x,y,n)曲线拟合函数，已知离散点坐标拟合曲线；x,y横纵坐标，n为拟合阶数，一阶直线拟合，二阶抛物线拟合 ，返回幂次从高到低的多项式系数向量P，矩阵S用于生成预测值的误差估计
+Y=polyconf(p,x1,y1); %置信区间
+plot(x1,y1,'r');     %画出拟合曲线，红线red
+hold off
+```
