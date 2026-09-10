@@ -11,9 +11,8 @@ layout: single
 author_profile: true
 excerpt: "Rapid photo acquisition"
 header:
-  overlay_image: /assets/images/post-header.jpg
+  overlay_color: "#333333"
   overlay_filter: 0.5
-  caption: "IEO: [IEO](https://ieeoo.com)"
 ---
 
 # The Origin: A Client Using Deep Learning to Detect iPhone Surface Defects

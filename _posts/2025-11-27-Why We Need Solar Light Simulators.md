@@ -10,9 +10,8 @@ layout: single
 author_profile: true
 excerpt: "Solar light simulation"
 header:
-  overlay_image: /assets/img/1.png
+  overlay_color: "#333333"
   overlay_filter: 0.5
-  caption: "IEO [IEO](https://ieeoo.com)"
 ---
 
 The Sun is Earth’s most fundamental and efficient energy source. Under standard test conditions (AM1.5G, 1000 W/m², 25°C), the solar spectrum spans from ultraviolet (~280 nm) to near-infrared (~2500 nm), delivering a total irradiance of 1000 watts per square meter. This benchmark is not only the gold standard for the photovoltaic industry but also serves as the critical reference for performance validation across numerous high-tech fields.

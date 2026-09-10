@@ -11,9 +11,8 @@ layout: single
 author_profile: true
 excerpt: "image capture for DL"
 header:
-  overlay_image: /assets/images/post-header.jpg
+  overlay_color: "#333333"
   overlay_filter: 0.5
-  caption: "Header image source: [Unsplash](https://unsplash.com)"
 ---
 
 # Missing Components in Factory-Produced Switch Buttons
