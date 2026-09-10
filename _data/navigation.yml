@@ -10,3 +10,22 @@ main:
   #   url: /collection-archive/
   # - title: "Sitemap"
   #   url: /sitemap/
+
+# 左侧侧边栏导航 - 分类列表
+sidebar:
+  - title: "分类"
+    children:
+      - title: "Tech"
+        url: /categories/#tech
+      - title: "AI"
+        url: /categories/#ai
+      - title: "C++"
+        url: /categories/#c
+      - title: "Qt"
+        url: /categories/#qt
+      - title: "OpenCV"
+        url: /categories/#opencv
+      - title: "Solar Light Simulation"
+        url: /categories/#solar-light-simulation
+      - title: "Testing"
+        url: /categories/#testing

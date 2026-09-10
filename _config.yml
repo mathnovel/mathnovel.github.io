@@ -60,6 +60,7 @@ social:
   name: "CooperWhite"
   links:
     - "https://github.com/mathnovel"
+    - "http:www.ieeoo.com"
     # 添加其他社交链接（可选）
 
 # Analytics
@@ -188,6 +189,12 @@ compress_html:
 
 # Defaults
 defaults:
+  # 全站默认：启用左侧分类侧边栏
+  - scope:
+      path: ""
+    values:
+      sidebar:
+        nav: "sidebar"
   # _posts
   - scope:
       path: ""
