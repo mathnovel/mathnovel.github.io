@@ -1,0 +1,12 @@
+{% comment %}
+  不蒜子（busuanzi）阅读量统计
+  - 在文章页标题下的 meta 行显示本文访问次数
+  - 仅在 production 环境加载脚本（避免本地 serve 计数）
+{% endcomment %}
+{% if jekyll.environment == "production" %}
+  <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+{% endif %}
+<span class="page__meta-views" id="busuanzi_container_page_pv" style="display:none">
+  <i class="far fa-eye" aria-hidden="true"></i>
+  本文阅读 <span id="busuanzi_value_page_pv"></span> 次
+</span>
