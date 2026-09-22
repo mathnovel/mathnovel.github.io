@@ -20,12 +20,10 @@ overlay_filter: 0.5
 > 
 > IEEOO Technology, [www.ieeoo.com](https://www.ieeoo.com)
  
- 
-<div style="position:relative; width:100%; max-width:320px; aspect-ratio:9/16; margin:10px auto;">
-<iframe style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
-src="https://youtube.com/shorts/YLny34MSX90?feature=share"
-title="YouTube Shorts"
-allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-allowfullscreen>
-</iframe>
+<div style="text-align:center; margin:20px auto;">
+<a href="https://youtube.com/shorts/y9w5C41-2JE?feature=share" target="_blank">
+<img alt="自动拍实拍" style="max-width:320px; width:100%; border-radius:6px;"
+src="https://i.ytimg.com/vi/y9w5C41-2JE/mqdefault.jpg">
+</a>
+<p style="font-size:0.9em; color:#666;">自动拍实拍（YouTube Shorts）</p>
 </div>
