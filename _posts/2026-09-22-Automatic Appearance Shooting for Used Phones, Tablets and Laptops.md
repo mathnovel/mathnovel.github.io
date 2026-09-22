@@ -1,7 +1,7 @@
+---
 title: "Automatic Appearance Shooting for Used Phones, Tablets and Laptops"
 date: 2026-09-22 12:00:00
 categories:
-
 - Automatic
 tags:
 - Automatic
